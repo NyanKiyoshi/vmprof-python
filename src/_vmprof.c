@@ -403,14 +403,19 @@ static PyObject * vmp_get_profile_path(PyObject *module, PyObject *noargs) {
 static PyObject *
 insert_real_time_thread(PyObject *module, PyObject * args) {
     ssize_t thread_count;
-    pthread_t thread_id;
+    unsigned long thread_id = 0;
+    pthread_t th = pthread_self();
 
     if (!PyArg_ParseTuple(args, "|k", &thread_id)) {
         return NULL;
     }
 
-    if (!thread_id) {
-        thread_id = pthread_self();
+    if (thread_id) {
+#if SIZEOF_LONG <= SIZEOF_PTHREAD_T
+        th = (pthread_t) thread_id;
+#else
+        th = (pthread_t) *(unsigned long *) &thread_id;
+#endif
     }
 
     if (!vmprof_is_enabled()) {
@@ -424,7 +429,7 @@ insert_real_time_thread(PyObject *module, PyObject * args) {
     }
 
     vmprof_aquire_lock();
-    thread_count = insert_thread(thread_id, -1);
+    thread_count = insert_thread(th, -1);
     vmprof_release_lock();
 
     return PyLong_FromSsize_t(thread_count);
@@ -433,14 +438,19 @@ insert_real_time_thread(PyObject *module, PyObject * args) {
 static PyObject *
 remove_real_time_thread(PyObject *module, PyObject * args) {
     ssize_t thread_count;
-    pthread_t thread_id;
+    unsigned long thread_id = 0;
+    pthread_t th = pthread_self();
 
     if (!PyArg_ParseTuple(args, "|k", &thread_id)) {
         return NULL;
     }
 
-    if (!thread_id) {
-        thread_id = pthread_self();
+    if (thread_id) {
+#if SIZEOF_LONG <= SIZEOF_PTHREAD_T
+        th = (pthread_t) thread_id;
+#else
+        th = (pthread_t) *(unsigned long *) &thread_id;
+#endif
     }
 
     if (!vmprof_is_enabled()) {
@@ -454,7 +464,7 @@ remove_real_time_thread(PyObject *module, PyObject * args) {
     }
 
     vmprof_aquire_lock();
-    thread_count = remove_thread(pthread_self(), -1);
+    thread_count = remove_thread(th, -1);
     vmprof_release_lock();
 
     return PyLong_FromSsize_t(thread_count);
